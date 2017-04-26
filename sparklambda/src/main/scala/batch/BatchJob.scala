@@ -34,6 +34,7 @@ object BatchJob {
       else
         None
     }
+    
 
     val keyedByProduct = inputRDD.keyBy(x => (x.product, x.timestamp_hour)).cache()
 
