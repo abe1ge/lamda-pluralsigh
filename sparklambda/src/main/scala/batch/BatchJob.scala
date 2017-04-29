@@ -1,8 +1,10 @@
 package batch
 
 import java.lang.management.ManagementFactory
-import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.sql.SQLContext
+
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.{SQLContext, SaveMode}
+import utils.SparkUtils._
 import domain._
 /**
   * Created by work on 26/04/2017.
@@ -10,26 +12,16 @@ import domain._
 object BatchJob {
   def main(args: Array[String]): Unit = {
 
-    // get spark configuration
-    val conf = new SparkConf()
-      .setAppName("Lambda with Spark")
-
-    // check if running from IDE
-    if (ManagementFactory.getRuntimeMXBean.getInputArguments.toString.contains("IntelliJ IDEA")) {
-      System.setProperty("hadoop.home.dir", "C:\\winutils") // required for winutils
-      conf.setMaster("local[*]")
-    }
-
-    // setup spark
-    val sc = new SparkContext(conf)
-    implicit val sqlContext = new SQLContext(sc)
+    // setup spark context
+    val sc = getSparkContext("Lambda with Spark")
+    val sqlContext = getSQLContext(sc)
 
     import org.apache.spark.sql.functions._
     import sqlContext.implicits._
 
 
     // initialize input RDD
-    val sourceFile = "file:///C:/Users/work/Documents/plursight/applyingLambdaArchitecture/Boxes/spark-kafka-cassandra-applying-lambda-architecture/vagrant/data.tsv"
+    val sourceFile = "file:///vagrant/data.tsv"
     val input = sc.textFile(sourceFile)
 
     val inputDF = input.flatMap{ line =>
@@ -41,7 +33,6 @@ object BatchJob {
         None
     }.toDF()
 
-    sqlContext.udf.register("UnderExposed", (pageViewCount: Long, purchaseCount: Long) => if (purchaseCount == 0) 0 else pageViewCount / purchaseCount)
 
     val df = inputDF.select(
       add_months(from_unixtime(inputDF("timestamp_hour") / 1000), 1).as("timestamp_hour"),
@@ -55,8 +46,6 @@ object BatchJob {
         |FROM activity GROUP BY product, timestamp_hour
       """.stripMargin)
 
-    visitorsByProduct.printSchema()
-
     val activityByProduct = sqlContext.sql(
       """SELECT product, timestamp_hour,
         |sum(case when action = 'purchase' then 1 else 0 end) as purchase_count,
@@ -64,18 +53,11 @@ object BatchJob {
         |sum(case when action = 'page_view' then 1 else 0 end) as page_view_count
         |FROM activity
         |GROUP BY product, timestamp_hour
-      """.stripMargin)
+      """.stripMargin).cache()
 
+    activityByProduct.write.partitionBy("timestamp_hour").mode(SaveMode.Append).parquet("hdfs://lambda-pluralsight:9000/lambda/batch1")
     activityByProduct.registerTempTable("activityByProduct")
 
-    val underExposedProducts = sqlContext.sql(
-      """
-        |SELECT product, timestamp_hour,
-        |UnderExposed(page_view_count, purchase_count) as negative_exposure
-        |FROM activityByProduct
-        |ORDER BY negative_exposure DESC
-        |limit 5
-      """.stripMargin)
 
     visitorsByProduct.foreach(println)
     activityByProduct.foreach(println)
