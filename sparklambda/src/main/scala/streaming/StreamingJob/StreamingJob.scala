@@ -1,8 +1,7 @@
 package streaming.StreamingJob
 
 import domain.{Activity, ActivityByProduct}
-import org.apache.spark.sql.functions.{add_months, from_unixtime}
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.SparkContext
 import org.apache.spark.streaming.{Duration, Seconds, StreamingContext}
 import utils.SparkUtils._
 
