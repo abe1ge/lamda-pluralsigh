@@ -23,7 +23,7 @@ object SparkUtils {
 
     // check if running from IDE
     if (isIDE) {
-      System.setProperty("hadoop.home.dir", "C:\\winutils") // required for winutils
+      System.setProperty("hadoop.home.dir", "winutils.exe") // required for winutils
       conf.setMaster("local[*]")
       checkpointDirectory = "file:///C:/Users/work/Documents/plursight/applyingLambdaArchitecture/Boxes/spark-kafka-cassandra-applying-lambda-architecture/vagrant/temp/"
     }else{

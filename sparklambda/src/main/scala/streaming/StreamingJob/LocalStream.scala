@@ -23,8 +23,9 @@ object LocalStream {
     val winLen = Seconds(10)
     val slideInt = Seconds(2)
 
+    val PATH = getClass.getResource("").getPath
     //file path reading from
-    val lines = ssc.textFileStream("file:///C:/Users/Administrator/Documents/abel/bigdata/streaming")
+    val lines = ssc.textFileStream(s"file:///${PATH}/../../../../../DataFolder/Streaming")
 
     //split on "," and take the third item
     val cost = lines.map(x => x.split(",")).map(x => x(2).toInt)
